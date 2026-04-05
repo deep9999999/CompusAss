@@ -97,7 +97,12 @@ class AdminUserService extends BaseAdminService {
 
 	/**删除用户 */
 	async delUser(id) {
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		await UserModel.del({
+			USER_MINI_OPENID: id
+		});
+		await JoinModel.del({
+			JOIN_USER_ID: id
+		});
 	}
 
 }

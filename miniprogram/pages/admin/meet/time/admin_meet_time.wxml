@@ -36,7 +36,7 @@
 							<text class="icon-delete"></text>
 						</view>
 
-						<switch bindtap="bindTimeStatusSwitch" disabled="{{true}}" data-idx="{{index}}" data-timesidx="{{timesIndex}}" class="limit-status green sm" checked="{{timesItem.status==1}}">
+						<switch bindtap="bindTimeStatusSwitch" disabled="{{false}}" data-idx="{{index}}" data-timesidx="{{timesIndex}}" class="limit-status green sm" checked="{{timesItem.status==1}}">
 						</switch>
 					</view>
 					<view class="time-oprt">

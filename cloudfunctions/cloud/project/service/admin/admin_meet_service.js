@@ -54,17 +54,52 @@ class AdminMeetService extends BaseAdminService {
 
 	/** 自助签到码 */
 	async genSelfCheckinQr(page, timeMark) {
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let cloud = cloudBase.getCloud();
+		let result = await cloud.openapi.wxacode.getUnlimited({
+			scene: timeMark,
+			width: 280,
+			check_path: false,
+			env_version: 'release',
+			page
+		});
+
+		let upload = await cloud.uploadFile({
+			cloudPath: config.MEET_TIMEMARK_QR_PATH + timeMark + '.png',
+			fileContent: result.buffer,
+		});
+		if (!upload || !upload.fileID) return '';
+		return upload.fileID;
 	}
 
 	/** 管理员按钮核销 */
 	async checkinJoin(joinId, flag) {
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		flag = Number(flag);
+		let where = {
+			_id: joinId,
+			JOIN_STATUS: JoinModel.STATUS.SUCC
+		};
+		let join = await JoinModel.getOne(where, 'JOIN_IS_CHECKIN');
+		if (!join) this.AppError('预约记录不存在或状态不可核销');
+		await JoinModel.edit(where, {
+			JOIN_IS_CHECKIN: flag
+		});
 	}
 
 	/** 管理员扫码核销 */
 	async scanJoin(meetId, code) {
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let where = {
+			JOIN_MEET_ID: meetId,
+			JOIN_CODE: code,
+			JOIN_STATUS: JoinModel.STATUS.SUCC
+		};
+		let join = await JoinModel.getOne(where, '_id,JOIN_IS_CHECKIN');
+		if (!join) this.AppError('未找到有效预约记录，请确认预约码是否正确');
+		if (join.JOIN_IS_CHECKIN == 1) this.AppError('该预约码已核销，请勿重复核销');
+		await JoinModel.edit({
+			_id: join._id
+		}, {
+			JOIN_IS_CHECKIN: 1
+		});
 	}
 
 	/**
@@ -93,7 +128,32 @@ class AdminMeetService extends BaseAdminService {
 
 	/** 取消某个时间段的所有预约记录 */
 	async cancelJoinByTimeMark(admin, meetId, timeMark, reason) {
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let where = {
+			JOIN_MEET_ID: meetId,
+			JOIN_MEET_TIME_MARK: timeMark,
+			JOIN_STATUS: JoinModel.STATUS.SUCC
+		};
+		let data = {
+			JOIN_STATUS: JoinModel.STATUS.ADMIN_CANCEL,
+			JOIN_REASON: reason || '',
+			JOIN_IS_CHECKIN: 0,
+			JOIN_EDIT_ADMIN_ID: admin.ADMIN_ID,
+			JOIN_EDIT_ADMIN_NAME: admin.ADMIN_NAME,
+			JOIN_EDIT_ADMIN_TIME: this._timestamp,
+			JOIN_EDIT_ADMIN_STATUS: JoinModel.STATUS.ADMIN_CANCEL
+		};
+		await JoinModel.edit(where, data);
+		let meetService = new MeetService();
+		await meetService.statJoinCnt(meetId, timeMark);
+		let ret = await JoinModel.groupCount({
+			JOIN_MEET_ID: meetId,
+			JOIN_MEET_TIME_MARK: timeMark
+		}, 'JOIN_STATUS');
+		return {
+			succCnt: ret['JOIN_STATUS_1'] || 0,
+			cancelCnt: ret['JOIN_STATUS_10'] || 0,
+			adminCancelCnt: ret['JOIN_STATUS_99'] || 0,
+		};
 	}
 
 

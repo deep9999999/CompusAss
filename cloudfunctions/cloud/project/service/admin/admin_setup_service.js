@@ -18,8 +18,21 @@ class AdminSetupService extends BaseAdminService {
 		about,
 		aboutPic
 	}) {
-
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let setup = await SetupModel.getOne({}, '_id');
+		if (!setup) {
+			let id = await SetupModel.insert({
+				SETUP_NAME: '全局设置'
+			});
+			setup = {
+				_id: id
+			};
+		}
+		await SetupModel.edit({
+			_id: setup._id
+		}, {
+			SETUP_ABOUT: about || '',
+			SETUP_ABOUT_PIC: aboutPic || []
+		});
 	}
 
 	/** 联系我们设置 */
@@ -29,8 +42,23 @@ class AdminSetupService extends BaseAdminService {
 		officePic,
 		servicePic,
 	}) {
-
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let setup = await SetupModel.getOne({}, '_id');
+		if (!setup) {
+			let id = await SetupModel.insert({
+				SETUP_NAME: '全局设置'
+			});
+			setup = {
+				_id: id
+			};
+		}
+		await SetupModel.edit({
+			_id: setup._id
+		}, {
+			SETUP_ADDRESS: address || '',
+			SETUP_PHONE: phone || '',
+			SETUP_OFFICE_PIC: officePic || [],
+			SETUP_SERVICE_PIC: servicePic || []
+		});
 	}
 
 	/** 小程序码 */

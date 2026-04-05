@@ -25,12 +25,30 @@ class AdminNewsService extends BaseAdminService {
 		url = '', //外部链接
 
 	}) {
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let data = {
+			NEWS_ADMIN_ID: adminId,
+			NEWS_TITLE: title,
+			NEWS_CATE_ID: cateId,
+			NEWS_CATE_NAME: cateName,
+			NEWS_ORDER: order,
+			NEWS_TYPE: Number(type),
+			NEWS_DESC: desc || '',
+			NEWS_URL: Number(type) === 1 ? (url || '') : '',
+			NEWS_CONTENT: [],
+			NEWS_PIC: [],
+		};
+
+		let id = await NewsModel.insert(data);
+		return {
+			id
+		};
 	}
 
 	/**删除资讯数据 */
 	async delNews(id) {
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		await NewsModel.del({
+			_id: id
+		});
 	}
 
 	/**获取资讯信息 */
@@ -54,8 +72,15 @@ class AdminNewsService extends BaseAdminService {
 		newsId,
 		content // 富文本数组
 	}) {
-
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let where = {
+			_id: newsId
+		};
+		let news = await NewsModel.getOne(where, 'NEWS_CONTENT');
+		if (!news) this.AppError('资讯不存在');
+		content = await cloudUtil.handlerCloudFilesByRichEditor(news.NEWS_CONTENT || [], content || []);
+		await NewsModel.edit(where, {
+			NEWS_CONTENT: content
+		});
 
 	}
 
@@ -67,8 +92,21 @@ class AdminNewsService extends BaseAdminService {
 		newsId,
 		imgList // 图片数组
 	}) {
+		let where = {
+			_id: newsId
+		};
+		let news = await NewsModel.getOne(where, 'NEWS_PIC');
+		if (!news) this.AppError('资讯不存在');
 
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		imgList = await cloudUtil.handlerCloudFiles(news.NEWS_PIC || [], imgList || []);
+		await NewsModel.edit(where, {
+			NEWS_PIC: imgList
+		});
+
+		let urls = await cloudUtil.getTempFileURL(imgList);
+		return {
+			urls
+		};
 
 	}
 
@@ -84,8 +122,18 @@ class AdminNewsService extends BaseAdminService {
 		desc = '',
 		url = '', //外部链接
 	}) {
-
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		let data = {
+			NEWS_TITLE: title,
+			NEWS_CATE_ID: cateId,
+			NEWS_CATE_NAME: cateName,
+			NEWS_ORDER: order,
+			NEWS_TYPE: Number(type),
+			NEWS_DESC: desc || '',
+			NEWS_URL: Number(type) === 1 ? (url || '') : '',
+		};
+		await NewsModel.edit({
+			_id: id
+		}, data);
 	}
 
 	/**取得资讯分页列表 */
@@ -151,12 +199,20 @@ class AdminNewsService extends BaseAdminService {
 
 	/**修改资讯状态 */
 	async statusNews(id, status) {
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		await NewsModel.edit({
+			_id: id
+		}, {
+			NEWS_STATUS: status
+		});
 	}
 
 	/**资讯置顶排序设定 */
 	async sortNews(id, sort) {
-		this.AppError('此功能暂不开放，如有需要请加作者微信：cclinux0730');
+		await NewsModel.edit({
+			_id: id
+		}, {
+			NEWS_ORDER: sort
+		});
 	}
 }
 
