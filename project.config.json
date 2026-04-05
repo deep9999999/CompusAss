@@ -37,9 +37,14 @@
         "disableUseStrict": false,
         "minifyWXML": true,
         "showES6CompileOption": false,
-        "useCompilerPlugins": false
+        "useCompilerPlugins": false,
+        "compileWorklet": false,
+        "localPlugins": false,
+        "condition": false,
+        "swc": false,
+        "disableSWC": true
     },
-    "appid": "wxb100b44af794708e",
+    "appid": "wx2acacaa6662b80b6",
     "projectname": "V1.0%E5%B0%8F%E7%A8%8B%E5%BA%8F",
     "libVersion": "3.14.3",
     "simulatorType": "wechat",

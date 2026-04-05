@@ -1,74 +1,89 @@
-## 功能介绍 
-    
-校园社团小程序，前后端完整代码包括社团通知，社团简介，社团福利，社团章程，社团招新，社团活动报名预约等功能，采用腾讯提供的小程序云开发解决方案，无须服务器和域名
+# CompusAss (校园助手/社团预约系统) 系统分析报告
 
-在高校，各个学生社团和学生组织都会在各个时间发布各式各样的活动信息，但是目前缺乏一个可靠、统一、简便的平台汇总各类的活动信息。社团活动助手小程序是基于自己大学校园内的各项信息开发的一款集报名、统计、汇总、收藏于一体的活动助手小程序，旨在帮助高校统筹管理各类校园活动，以提升学生和老师的活动参与度。
+## 1. 项目概述
+CompusAss 是一款基于微信原生小程序与微信云开发（CloudBase）的校园综合助手及预约系统。该项目采用了前后端分离和云原生架构，主要服务于校园社团通知下发、活动展示、场地与活动预约报名、用户中心管理以及移动端后台数据维护等场景。
 
-- 预约管理：开始/截止时间/人数均可灵活设置，可以自定义客户预约填写的数据项
-- 预约凭证：支持线下到场后校验签到/核销/二维码自助签到等多种方式
-- 详尽的预约数据：支持预约名单数据导出Excel，打印
+## 2. 系统架构设计
+系统整体依托 **Serverless（无服务器）** 架构，前端使用原生微信小程序语法（WXML/WXSS/JS）开发，后端依托于微信单体云函数与云数据库。
 
-![image](https://user-images.githubusercontent.com/101155347/157146722-97293d3f-cf52-42cc-a17c-1620e7cfe7f7.png)
+### 2.1 前端架构 (Miniprogram)
+前端代码位于 `miniprogram/` 目录下，采用组件化和模块化设计：
+- **核心业务模块 (`projects/A00/`)**：包含了面向用户（C端）的主要业务页面，包括：
+  - `default/`：首页展示与导航。
+  - `news/`：社团通知与简介（资讯列表与图文详情）。
+  - `calendar/` & `meet/`：预约日历视图、活动详情与在线报名表单。
+  - `my/`：个人中心、我的预约/活动参与记录与资料修改。
+- **管理后台模块 (`pages/admin/`)**：面向管理员（B端）的移动端后台页面，涵盖：
+  - 数据面板、活动预约管理（包含时段设置、扫码核销、记录导出）、资讯文章发布、用户列表及系统设置。
+- **公共组件库 (`cmpts/`)**：沉淀了大量高复用的自定义组件，例如动态表单生成器（`form`）、日历控件（`calendar`）、图片上传（`img_upload`）、海报生成（`poster`）等。
+- **业务逻辑抽象 (`biz/` & `behavior/`)**：抽离了各个页面的核心业务逻辑与 Behaviors，极大提升了代码的复用度。
 
-## 技术运用
-- 本项目使用微信小程序平台进行开发。
-- 使用腾讯专门的小程序云开发技术，云资源包含云函数，数据库，带宽，存储空间，定时器等，资源配额价格低廉，无需域名和服务器即可搭建。
-- 小程序本身的即用即走，适合小工具的使用场景，也适合快速开发迭代。
-- 云开发技术采用腾讯内部链路，没有被黑客攻击的风险，安全性高且免维护。
-- 资源承载力可根据业务发展需要随时弹性扩展。  
+### 2.2 后端架构 (CloudFunctions)
+后端采用 **单路由云函数入口（Single-Entry Cloud Function）** 模式，所有业务请求统一指向名为 `cloud` 的云函数，从而彻底解决云函数冷启动问题，并突破云函数数量限制。其底层基于一套自研的轻量级 MVC 路由框架：
 
+1. **入口与路由分发 (Router)**：
+   - 核心文件：`index.js` 及 `framework/core/application.js`。
+   - 工作流：通过接收前端传入的 `route` 参数（如 `meet/list`），在 `config/route.js` 中匹配对应的控制器及方法（如 `meet_controller@list`），并动态实例化执行。
+   - 支持类似中间件的 AOP 拦截（如路由配置中的 `#` 后缀支持 `beforeApp` 前置处理）。
 
+2. **Controller 层 (`project/controller/`)**：
+   - 承担请求接收、参数校验（依赖 `framework/validate/`）与权限控制。
+   - 严格划分 `admin/`（后台管理API，需校验 Token/Admin 权限）与前端普通接口（依赖 OpenID 校验）。
+   - 基类 `base_controller.js` 提供了通用的成功/失败响应结构（如 `appUtil.handlerData`）。
 
-## 作者
-- 如有疑问，欢迎骚扰联系我鸭：开发交流，技术分享，问题答疑，功能建议收集，版本更新通知，安装部署协助，小程序开发定制等。
-- 俺的微信:
+3. **Service 层 (`project/service/`)**：
+   - 处理核心业务逻辑与事务（如报名冲突检测、并发超卖控制、日历数据生成等）。
+   - 通过继承 `base_service.js` 实现通用的 CRUD 服务，复用度极高。
 
-![image](https://user-images.githubusercontent.com/101155347/157146758-43fec727-8359-435e-a77d-0107d2197725.png)
+4. **Model 层 (`project/model/`)**：
+   - 基于面向对象对微信云数据库 (Cloud Database) 的 Collection 进行了高级封装。
+   - 统一定义了 `DB_STRUCTURE` 数据字典（支持类型校验、默认值、必填项限制，模拟关系型数据库的严格约束）。
 
+### 2.3 数据存储设计 (Cloud Database)
+系统使用微信云开发的 NoSQL 数据库，基于 `Model` 层定义的 `DB_STRUCTURE`，实现了类似关系型数据库的约束机制。核心数据表（集合）结构如下：
 
+#### 1. 用户表 (`ax_user` - `UserModel`)
+管理 C 端授权用户信息及状态。
+- `USER_MINI_OPENID`: String (核心外键/主键，小程序 OpenID)
+- `USER_STATUS`: Int (状态：0=待审核, 1=正常)
+- `USER_NAME` / `USER_MOBILE`: String (真实姓名与手机号)
+- `USER_LOGIN_CNT` / `USER_LOGIN_TIME`: Int (登录统计与最后活跃时间)
 
-## 演示
+#### 2. 活动/预约项目表 (`ax_meet` - `MeetModel`)
+定义预约项目的基本信息、可预约时段与自定义表单配置。
+- `MEET_ID`: String (业务主键)
+- `MEET_TITLE`: String (项目名称)
+- `MEET_DAYS`: Array (可用日期与时段的快照)
+- `MEET_FORM_SET`: Array (动态表单字段设置，JSON 格式，支持自定义收集字段)
+- `MEET_STYLE_SET`: Object (样式与封面图设置)
+- `MEET_STATUS`: Int (状态：0=未启用, 1=使用中, 9=停止预约, 10=已关闭)
 
-![image](https://user-images.githubusercontent.com/101155347/157146730-d4a23bc9-8091-4b68-91f2-3c99524f4de4.png)
+#### 3. 报名流水表 (`ax_join` - `JoinModel`)
+记录用户的每一次预约行为、核销状态及填写的动态表单数据。
+- `JOIN_ID`: String (业务流水号)
+- `JOIN_USER_ID`: String (关联用户 ID)
+- `JOIN_MEET_ID` / `JOIN_MEET_TITLE`: String (关联的项目 ID 及冗余标题)
+- `JOIN_MEET_DAY` / `JOIN_MEET_TIME_START`: String (预约的具体日期与时间段)
+- `JOIN_FORMS`: Array (用户填写的表单快照数据)
+- `JOIN_CODE`: String (15位唯一核验码，用于线下扫码签到)
+- `JOIN_IS_CHECKIN`: Int (签到状态：0=未签到, 1=已签到)
+- `JOIN_STATUS`: Int (状态：1=预约成功, 10=用户取消, 99=系统取消)
 
- 
+#### 4. 资讯/通知表 (`ax_news` - `NewsModel`)
+存储社团公告、活动简介及图文内容。
+- `NEWS_ID`: String (业务主键)
+- `NEWS_TYPE`: Int (类型：0=本地文章，1=外部链接)
+- `NEWS_CATE_ID` / `NEWS_CATE_NAME`: String (分类映射)
+- `NEWS_CONTENT`: Array (富文本内容切片，支持多图文)
+- `NEWS_VIEW_CNT` / `NEWS_FAV_CNT`: Int (浏览量与收藏量)
 
-## 安装
+#### 5. 其他辅助表
+- **`ax_admin` (`AdminModel`)**: 后台管理员表，记录账号、密码（MD5）及权限等级。
+- **`ax_setup` (`SetupModel`)**: 系统配置表，存储全局设置（如“关于我们”、联系电话、客服二维码等）。
+- **`ax_log` (`LogModel`)**: 系统日志表，用于审计管理员的关键操作与系统异常。
 
-- 安装手册见源码包里的word文档
-
-
-
-
-## 截图
-![image](https://user-images.githubusercontent.com/101155347/157146798-948221dd-3c7c-44d9-a1b7-5a9497694dc4.png)
-![image](https://user-images.githubusercontent.com/101155347/157146802-3cc003f9-7a4c-4de3-bd34-54deadb76b56.png)
-![image](https://user-images.githubusercontent.com/101155347/157146806-b076de84-2176-422e-a5da-75fc9e00f3a7.png)
-![image](https://user-images.githubusercontent.com/101155347/157146814-2437e8ac-5a95-4d1c-8c6f-82c0c46cc498.png)
-![image](https://user-images.githubusercontent.com/101155347/157146817-4ae496c8-f360-4043-879e-6bdb0da4b0a4.png)
-![image](https://user-images.githubusercontent.com/101155347/157146820-a02a18d5-489e-4591-8d2e-f9c6c5220a50.png)
-![image](https://user-images.githubusercontent.com/101155347/157146824-136b094f-f3ea-423f-8b5b-7244314fa9f4.png)
-![image](https://user-images.githubusercontent.com/101155347/157146829-3aebf761-0653-4439-9126-3759fcc9f931.png)
-![image](https://user-images.githubusercontent.com/101155347/157146830-4823aaa6-d81b-420d-be44-89ba1c49aa57.png)
-
- 
-
-
-## 后台截图
-![image](https://user-images.githubusercontent.com/101155347/157146839-e7dd985e-8d10-42e8-831d-0ba5b3fb5736.png)
-![image](https://user-images.githubusercontent.com/101155347/157146849-a2237d49-4476-4332-b6ed-f21e8d8486c5.png)
-![image](https://user-images.githubusercontent.com/101155347/157146855-8000b97f-d371-4975-b70c-1b8785edcd39.png)
-![image](https://user-images.githubusercontent.com/101155347/157146861-04434980-4c5b-4543-9003-ea10c166e61b.png)
-![image](https://user-images.githubusercontent.com/101155347/157146870-e8d9a167-0b40-4e58-ae9b-be567ca4dc6f.png)
-![image](https://user-images.githubusercontent.com/101155347/157146876-9231758a-cd0a-4b0c-8428-e52b05be39ed.png)
-![image](https://user-images.githubusercontent.com/101155347/157146889-f86ceea0-2382-4bf0-8eb5-daef5ad40c4b.png)
-![image](https://user-images.githubusercontent.com/101155347/157146900-59db8d98-b06d-4d1a-bc57-6fe77bb467eb.png)
-![image](https://user-images.githubusercontent.com/101155347/157146907-4f49bc20-a5f4-4955-9403-145b9841daee.png)
-
-
-
-
-
-
-
- 
+## 3. 核心功能亮点
+1. **多维度预约与核销体系**：支持按日期、时段配置预约名额，提供直观的日历视图 (`calendar_index`)，并支持管理员在线下进行扫码核销签到。
+2. **移动端轻量化后台**：管理员无需依赖 PC 端，直接在小程序内即可完成资讯发布、活动创建、名单查看，并支持通过集成的 `node-xlsx` 将预约数据导出为 Excel 表格。
+3. **高可用可扩展架构**：使用单体云函数分发机制，结合 `Model-Service-Controller` 分层架构，使代码具备极强的可维护性和业务水平扩展能力。
+4. **动态表单配置**：内置的自定义表单组件允许活动发布者在后台灵活配置需要收集的用户报名信息（如姓名、学号、电话等），满足不同类型活动的报名需求。
