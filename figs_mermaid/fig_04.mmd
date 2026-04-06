@@ -1,0 +1,8 @@
+flowchart TD
+A["接收 event.route"] --> B{"route 合法?"}
+B -- 否 --> X["appUtil.handlerSvrErr"]
+B -- 是 --> C["route.js 映射 controller@action"]
+C --> D["require ControllerClass"]
+D --> E["controller.initSetup()"]
+E --> F["controller[action]()"]
+F --> G["appUtil.handlerData / handlerSucc"]

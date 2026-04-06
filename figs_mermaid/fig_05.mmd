@@ -1,0 +1,14 @@
+sequenceDiagram
+participant U as 学生
+participant MP as 小程序
+participant CF as 云函数
+participant DB as 云数据库
+U->>MP: 填写表单并提交
+MP->>CF: route=meet/join
+CF->>DB: 校验时段、名额、重复预约
+CF->>DB: 写入 ax_join 并生成 JOIN_CODE
+DB-->>CF: 返回 joinId
+CF-->>MP: 报名成功
+U->>MP: 出示核验码
+MP->>CF: route=admin/join_scan
+CF->>DB: 更新 JOIN_IS_CHECKIN=1

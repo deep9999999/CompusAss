@@ -1,0 +1,29 @@
+erDiagram
+    AX_USER ||--o{ AX_JOIN : "JOIN_USER_ID"
+    AX_MEET ||--o{ AX_JOIN : "JOIN_MEET_ID"
+    AX_ADMIN ||--o{ AX_MEET : "MEET_ADMIN_ID"
+    AX_ADMIN ||--o{ AX_NEWS : "NEWS_ADMIN_ID"
+    AX_ADMIN ||--o{ AX_LOG : "LOG_ADMIN_ID"
+
+    AX_USER {
+      string USER_ID PK
+      string USER_MINI_OPENID
+      int USER_STATUS
+      string USER_NAME
+      string USER_MOBILE
+    }
+    AX_MEET {
+      string MEET_ID PK
+      string MEET_TITLE
+      string MEET_TYPE_ID
+      int MEET_STATUS
+      array MEET_DAYS
+    }
+    AX_JOIN {
+      string JOIN_ID PK
+      string JOIN_USER_ID FK
+      string JOIN_MEET_ID FK
+      string JOIN_CODE
+      int JOIN_IS_CHECKIN
+      int JOIN_STATUS
+    }

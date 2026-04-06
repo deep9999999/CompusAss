@@ -1,0 +1,8 @@
+flowchart LR
+A[小程序页面/组件] --> B[Biz 层调用 cloudHelper]
+B --> C[云函数入口 index.js]
+C --> D[application.js 路由分发]
+D --> E[Controller]
+E --> F[Service]
+F --> G[Model]
+G --> H[Cloud Database]
